@@ -578,8 +578,9 @@ body {
 /* Replay celebration button */
 .replay-btn-container {
   text-align: center;
-  padding: 1.5rem 0 3rem;
+  padding: 2rem 0 4rem;
   display: none;
+  clear: both;
 }
 .replay-btn-container.visible { display: block; }
 
@@ -699,7 +700,7 @@ body {
   <div class="card-grid" id="cardGrid"></div>
 
   <div class="replay-btn-container" id="replayBtnContainer">
-    <button class="replay-btn" onclick="replayCelebration()">🎊 ดูอวยพรอีกครั้ง 🎊</button>
+    <button class="replay-btn" onclick="replayCelebration()">🎊 ดูคำอวยพรอีกครั้ง 🎊</button>
   </div>
 </div>
 
@@ -787,6 +788,7 @@ let audioCtx = null;
 let isMuted = true;
 let melodyTimeout = null;
 let cardsBuilt = false;
+let hasSeenCongrats = false;
 
 // ===================== LANDING SPARKLES =====================
 function initLandingSparkles() {
@@ -816,6 +818,11 @@ function makeWish() {
     setTimeout(function() {
       document.getElementById('landing').classList.add('hidden');
       document.getElementById('cards-page').classList.add('visible');
+      // Resume audio
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      isMuted = false;
+      document.getElementById('soundBtn').textContent = '🔊';
+      playMelody();
     }, 900);
     setTimeout(function() { document.getElementById('pageTransition').classList.remove('active'); }, 1600);
     return;
@@ -970,17 +977,24 @@ function flipCard(index) {
     playCardNote();
 
     if (openedCount === 28) {
-      setTimeout(function() {
-        launchConfetti(120);
-        setTimeout(showFinalMessage, 1200);
-      }, 600);
+      if (!hasSeenCongrats) {
+        // First time completing — auto confetti + message
+        hasSeenCongrats = true;
+        setTimeout(function() {
+          launchConfetti(120);
+          setTimeout(showFinalMessage, 1200);
+        }, 600);
+      } else {
+        // Already seen — just show replay button
+        document.getElementById('replayBtnContainer').classList.add('visible');
+      }
     }
   }
 }
 
 // ===================== GO HOME =====================
 function goHome() {
-  // Stop music
+  // Stop music but keep audioCtx alive
   if (melodyTimeout) clearTimeout(melodyTimeout);
   isMuted = true;
   document.getElementById('soundBtn').textContent = '🔇';
@@ -992,10 +1006,14 @@ function goHome() {
     var landing = document.getElementById('landing');
     landing.classList.remove('hidden');
     landing.classList.remove('fade-out');
-    landing.style.opacity = '1';
-    landing.style.transform = 'none';
-    // Reset wish button
+    // Force reset all styles on landing and its children
+    landing.style.cssText = 'opacity:1; transform:none; display:flex;';
+    // Ensure title, subtitle, button are visible (they start opacity:0 with animation)
+    var title = landing.querySelector('.landing-title');
+    var subtitle = landing.querySelector('.landing-subtitle');
     var btn = document.getElementById('wishBtn');
+    if (title) title.style.opacity = '1';
+    if (subtitle) subtitle.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
     btn.style.opacity = '1';
     // Reset candle flames
